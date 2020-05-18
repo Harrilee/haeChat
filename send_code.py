@@ -6,10 +6,10 @@ def send_code(address, code):
     from_addr = '1709754403@qq.com'
     password = 'oxzuvolodrzpcgad'
     smtp_server = 'smtp.qq.com'
-    msg = MIMEText('Dear User,\n\n\tYour verification code is: '+code+'\n\nSincerely,\nHChat', 'plain', 'utf-8')
-    msg['From'] = Header('HChat')
+    msg = MIMEText('Dear User,\n\n\tYour verification code is: '+code+'\n\nSincerely,\nhaeChat', 'plain', 'utf-8')
+    msg['From'] = Header('haeChat')
     msg['To'] = Header(address)
-    msg['Subject'] = Header('HChat Verification Code')
+    msg['Subject'] = Header('haeChat Verification Code')
     server = smtplib.SMTP_SSL(smtp_server)
     server.connect(smtp_server, 465)
     server.login(from_addr, password)

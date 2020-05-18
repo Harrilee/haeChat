@@ -5,6 +5,10 @@ Created on Sun Apr  5 00:00:32 2015
 """
 from chat_utils import *
 import json
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+import pygame
+
 
 class ClientSM:
     def __init__(self, s):
@@ -42,6 +46,22 @@ class ClientSM:
             self.out_msg += 'User is not online, try again later\n'
         return(False)
 
+    def gaming_to(self, peer):
+        msg = json.dumps({"action":"g_connect", "target":peer})
+        mysend(self.s, msg)
+        response = json.loads(myrecv(self.s))
+        if response["success"] == "success":
+            self.peer = peer
+            self.out_msg += 'You are gaming with ' + self.peer + '\n'
+            return (True)
+        elif response["status"] == "busy":
+            self.out_msg += 'User is busy. Please try again later\n'
+        elif response["status"] == "self":
+            self.out_msg += 'Cannot game with yourself (sick)\n'
+        else:
+            self.out_msg += 'User is not online, try again later\n'
+        return(False)
+
     def disconnect(self):
         msg = json.dumps({"action":"disconnect"})
         mysend(self.s, msg)
@@ -58,7 +78,8 @@ class ClientSM:
         if self.state == S_LOGGEDIN:
             # todo: can't deal with multiple lines yet
             if len(my_msg) > 0:
-
+                #========================================
+                
                 if my_msg == 'q':
                     self.out_msg += 'See you next time!\n'
                     self.state = S_OFFLINE
@@ -80,6 +101,28 @@ class ClientSM:
                     if self.connect_to(peer) == True:
                         self.state = S_CHATTING
                         self.out_msg += 'Connect to ' + peer + '. Chat away!\n\n'
+                        self.out_msg += '-----------------------------------\n'
+                    else:
+                        self.out_msg += 'Connection unsuccessful\n'
+
+                #single player
+                elif my_msg == 'game':
+                    self.out_msg += game_menu
+                elif my_msg == 'virus shooter':
+                    os.system("shooter.py")
+                    with open("shooter_record.txt") as f:
+                        score = f.read()
+                    self.out_msg += "Your score: " + score + "\n"
+                elif my_msg == 'snake':
+                    os.system("SnakeS.py")
+                    
+                #multi player
+                elif my_msg[0] == 'g':
+                    peer = my_msg[1:]
+                    peer = peer.strip()
+                    if self.gaming_to(peer) == True:
+                        self.state = S_GAMING
+                        self.out_msg += 'Gaming with ' + peer + '. Good luck!\n\n'
                         self.out_msg += '-----------------------------------\n'
                     else:
                         self.out_msg += 'Connection unsuccessful\n'
@@ -123,6 +166,17 @@ class ClientSM:
                     self.state = S_CHATTING
                     # ----------end of your code----#
 
+                elif peer_msg["action"] == "g_connect":
+
+                    # ----------your code here------#
+                    #print(peer_msg)
+                    self.peer=peer_msg['from']
+                    self.out_msg += 'Gaming request from '+self.peer+'.\n'
+                    self.out_msg += 'You are gaming with '+self.peer+'. Good luck!'+'\n\n'
+                    self.out_msg += '----------------------------------------\n\n'
+                    self.state = S_GAMING
+                    # ----------end of your code----#
+
 #==============================================================================
 # Start chatting, 'bye' for quit
 # This is event handling instate "S_CHATTING"
@@ -134,6 +188,7 @@ class ClientSM:
                     self.disconnect()
                     self.state = S_LOGGEDIN
                     self.peer = ''
+                
             if len(peer_msg) > 0:    # peer's stuff, coming in
 
 
@@ -154,6 +209,34 @@ class ClientSM:
             # Display the menu again
             if self.state == S_LOGGEDIN:
                 self.out_msg += menu
+#==============================================================================
+# gaming state
+#==============================================================================
+        elif self.state == S_GAMING:
+                        
+            if len(my_msg) > 0:
+                print("message: ", my_msg)
+                mysend(self.s, json.dumps({"action":"exchange_g", "from":"[" + self.me + "]", "message":my_msg}))
+
+                if my_msg == 'n' or my_msg == 'q' or my_msg == 'Q':
+                    self.disconnect()
+                    self.state = S_LOGGEDIN
+                    self.peer = ''
+                    
+            if len(peer_msg) > 0: # peer's stuff, coming in
+                peer_msg = json.loads(peer_msg)
+                if peer_msg["action"] == "connect":
+                    self.out_msg += "(" + peer_msg["from"] + " joined)\n"
+                elif peer_msg["action"] == "disconnect":
+                    self.out_msg += peer_msg["message"]
+                    self.state = S_LOGGEDIN
+                else:
+                    self.out_msg += peer_msg["from"] + peer_msg["message"]
+
+            if self.state == S_LOGGEDIN:
+                self.out_msg += menu
+
+        
 #==============================================================================
 # invalid state
 #==============================================================================
