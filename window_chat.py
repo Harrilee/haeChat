@@ -8,6 +8,8 @@ import threading
 from chat_utils import *
 import select
 import json
+import window_add_group
+import window_modify_group
 
 
 def chat(self):
@@ -27,6 +29,11 @@ def chat(self):
                 button5.pack(side=RIGHT)
             else:
                 button5.pack_forget()
+                label1_string.set('')
+            my_msg, peer_msg = self.get_msgs()
+            output(my_msg, peer_msg)
+            msg = json.dumps({"action": "refresh_list", "from": self.name})
+            mysend(self.socket, msg)
             my_msg, peer_msg = self.get_msgs()
             output(my_msg, peer_msg)
             time.sleep(CHAT_WAIT)
@@ -53,9 +60,10 @@ def chat(self):
 
         if len(peer_msg) > 0:
             peer_msg = json.loads(peer_msg)
-            print(peer_msg)
             # -----------------------------deal with user and group list-----------------------------------#
             try:
+                if peer_msg['users'] == self.user and peer_msg['groups'] == self.group:
+                    0 / 0
                 if peer_msg['users'] != self.user:
                     self.user = peer_msg['users']
                 if peer_msg['groups'] != self.group:
@@ -64,6 +72,7 @@ def chat(self):
                 if self.type == 'group':
                     for each in self.group:
                         listbox1.insert(END, each)
+                    listbox1.insert(END, '*Add a group...')
                 elif self.type == 'user':
                     for each in self.user:
                         if each != self.name:
@@ -71,25 +80,28 @@ def chat(self):
             except:
                 pass
             # --------------------------store local chat history with chat_history---------------------------#
-            try:
-                if peer_msg['type'] == 'user':
-                    self.chat_history[peer_msg['from']] = \
-                        self.chat_history[peer_msg['from']] + peer_msg['message']
-                if peer_msg['type'] == 'group':
-                    self.chat_history[peer_msg['to']] = \
-                        self.chat_history[peer_msg['to']] + peer_msg['message']
-                print('message received:', peer_msg)
-            except Exception as inst:
+            if peer_msg['action'] == 'exchange':
                 try:
-                    print(inst)
                     if peer_msg['type'] == 'user':
-                        self.chat_history[peer_msg['from']] = peer_msg['message']
+                        self.chat_history[peer_msg['from']] = \
+                            self.chat_history[peer_msg['from']] + peer_msg['message']
                     if peer_msg['type'] == 'group':
-                        self.chat_history[peer_msg['to']] = peer_msg['message']
+                        self.chat_history[peer_msg['to']] = \
+                            self.chat_history[peer_msg['to']] + peer_msg['message']
                     print('message received:', peer_msg)
-                except:
-                    print('failed to process message:', peer_msg)
-
+                except Exception as inst:
+                    try:
+                        print(inst)
+                        if peer_msg['type'] == 'user':
+                            self.chat_history[peer_msg['from']] = peer_msg['message']
+                        if peer_msg['type'] == 'group':
+                            self.chat_history[peer_msg['to']] = peer_msg['message']
+                        print('message received:', peer_msg)
+                    except:
+                        pass
+            elif peer_msg['action'] == 'member_list':
+                self.member_list=peer_msg['member_list']
+                print('member_list:', peer_msg)
         # --------------------------update text2 with chat_history----------------------------------------------#
 
         try:
@@ -112,6 +124,7 @@ def chat(self):
         button5_string.set('Group Settings')
         for each in self.group:
             listbox1.insert(END, each)
+        listbox1.insert(END, '*Add a group...')
 
     def button2_click():
         self.type = 'user'
@@ -123,11 +136,34 @@ def chat(self):
             if each != self.name:
                 listbox1.insert(END, each)
 
+    def button5_click():
+        msg = json.dumps({"action": "member_list", "from": self.name, 'to': self.to})
+        mysend(self.socket, msg)
+
+        while True:
+            my_msg, peer_msg = self.get_msgs()
+            if len(peer_msg)==0:
+                continue
+            peer_msg = json.loads(peer_msg)
+            if peer_msg['action'] == 'member_list':
+                self.member_list = peer_msg['member_list']
+                print('member_list:', peer_msg)
+                break
+
+        window_modify_group.main(self, self.to, self.member_list)
+        self.to = ''
+
+
     def refresh_selection(x):
         selection = listbox1.curselection()
         if selection != ():
-            self.to = listbox1.get(selection)
-            label1_string.set(self.to)
+            if listbox1.get(selection) == '*Add a group...':
+                button3_click()
+                window_add_group.main(self)
+
+            else:
+                self.to = listbox1.get(selection)
+                label1_string.set(self.to)
 
     # -----------------------------------------------end---------------------------------------------- #
 
@@ -186,7 +222,7 @@ def chat(self):
     label1.pack(side=LEFT)
 
     button5_string = StringVar()
-    button5 = Button(frame5, width=15, textvariable=button5_string)
+    button5 = Button(frame5, width=15, textvariable=button5_string, command=button5_click)
 
     pan2 = PanedWindow(frame2, orient=VERTICAL)
     pan2.pack(fill=BOTH)

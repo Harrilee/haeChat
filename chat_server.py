@@ -289,17 +289,29 @@ class Server:
                 # ---- end of your code --- #
                 mysend(from_sock, json.dumps(
                     {"action": "search", "results": search_rslt}))
-        # ==============================================================================
-        #                 the "from" guy really, really has had enough
-        # ==============================================================================
+            # ==============================================================================
+            #                 the "from" guy really, really has had enough
+            # ==============================================================================
+            elif msg['action'] == 'create_group':
+                self.group.new_group(msg['name'], msg['member'])
+            elif msg['action'] == 'edit_group':
+                self.group.edit_group(msg['new_name'], msg['member'], msg['old_name'])
+            elif msg['action'] == 'member_list':
+                mysend(from_sock, json.dumps(
+                    {"action": "member_list",
+                     "member_list": self.group.chat_grps[self.group.name2group[msg['to']]]['members']}))
+                print(self.group.chat_grps[self.group.name2group[msg['to']]]['members'])
+            elif msg['action'] == 'refresh_list':
+                pass
+            else:
+                print(msg)
+                # client died unexpectedly
+                self.logout(from_sock)
 
-        else:
-            # client died unexpectedly
-            self.logout(from_sock)
+                # ==============================================================================
+                # main loop, loops *forever*
+                # ==============================================================================
 
-    # ==============================================================================
-    # main loop, loops *forever*
-    # ==============================================================================
     def run(self):
         print('starting server...')
         while (1):

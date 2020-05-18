@@ -85,6 +85,16 @@ class Group:
         self.save_grps()
         return
 
+    def edit_group(self, grp_name, members, old_name):
+        number=self.name2group[old_name]
+        self.delete_group(number)
+        self.chat_grps[number] = {'name': grp_name, 'members': members}
+        for each_member in members:
+            self.members[each_member].groups.append(number)
+        self.name2group[grp_name] = number
+        self.save_grps()
+        return
+
     def add_people(self, people, group_number):
         self.chat_grps[group_number]['members'].append(people)
         self.members[people].groups.append(group_number)
@@ -104,9 +114,11 @@ class Group:
         return
 
     def delete_group(self, group_number):
+        self.name2group.pop(self.chat_grps[group_number]['name'])
         for each_member in self.chat_grps[group_number]['members']:
             self.members[each_member].groups.remove(group_number)
         self.chat_grps.pop(group_number)
-        self.name2group.remove(self.chat_grps[group_number]['name'])
+        print(self.chat_grps)
+
         self.save_grps()
         return
