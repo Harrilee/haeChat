@@ -1,4 +1,5 @@
 from tkinter import *
+from tkinter.font import *
 from tkinter import messagebox
 import socket
 import time
@@ -19,7 +20,13 @@ def chat(self):
     def looptask():
         msg = json.dumps({"action": "refresh_list", "from": self.name})
         mysend(self.socket, msg)
+        button2_click()
         while self.sm.get_state() != S_OFFLINE:
+            # set button5
+            if self.to != '':
+                button5.pack(side=RIGHT)
+            else:
+                button5.pack_forget()
             my_msg, peer_msg = self.get_msgs()
             output(my_msg, peer_msg)
             time.sleep(CHAT_WAIT)
@@ -28,7 +35,7 @@ def chat(self):
         if len(my_msg) > 0:  # my stuff going out
             try:
                 if self.to == '':
-                    0/0
+                    0 / 0
                 msg = json.dumps({"action": "exchange", "from": self.name, 'type': self.type, \
                                   'to': self.to, "message": my_msg})
                 mysend(self.socket, msg)
@@ -59,19 +66,26 @@ def chat(self):
                         listbox1.insert(END, each)
                 elif self.type == 'user':
                     for each in self.user:
-                        if each!=self.name:
+                        if each != self.name:
                             listbox1.insert(END, each)
             except:
                 pass
             # --------------------------store local chat history with chat_history---------------------------#
             try:
-                self.chat_history[peer_msg['from']] = \
-                    self.chat_history[peer_msg['from']] + peer_msg['message']
+                if peer_msg['type'] == 'user':
+                    self.chat_history[peer_msg['from']] = \
+                        self.chat_history[peer_msg['from']] + peer_msg['message']
+                if peer_msg['type'] == 'group':
+                    self.chat_history[peer_msg['to']] = \
+                        self.chat_history[peer_msg['to']] + peer_msg['message']
                 print('message received:', peer_msg)
             except Exception as inst:
                 try:
                     print(inst)
-                    self.chat_history[peer_msg['from']] = peer_msg['message']
+                    if peer_msg['type'] == 'user':
+                        self.chat_history[peer_msg['from']] = peer_msg['message']
+                    if peer_msg['type'] == 'group':
+                        self.chat_history[peer_msg['to']] = peer_msg['message']
                     print('message received:', peer_msg)
                 except:
                     print('failed to process message:', peer_msg)
@@ -79,11 +93,11 @@ def chat(self):
         # --------------------------update text2 with chat_history----------------------------------------------#
 
         try:
-            if text1.get(0.0, END) != self.chat_history[self.to]+'\n':
+            if text1.get(0.0, END) != self.chat_history[self.to] + '\n':
                 text1.delete(0.0, END)
                 text1.insert(END, self.chat_history[self.to])
         except KeyError:
-            self.chat_history[self.to]=''
+            self.chat_history[self.to] = ''
             text1.insert(END, self.chat_history[self.to])
 
     def button4_click():
@@ -91,31 +105,36 @@ def chat(self):
         text2.delete(0.0, END)
 
     def button3_click():
+        label2_string.set('Group')
         self.type = 'group'
+        self.to = ''
         listbox1.delete(0, END)
+        button5_string.set('Group Settings')
         for each in self.group:
             listbox1.insert(END, each)
 
     def button2_click():
         self.type = 'user'
+        self.to = ''
+        label2_string.set('User')
         listbox1.delete(0, END)
+        button5_string.set('Play Game')
         for each in self.user:
-            if each!=self.name:
+            if each != self.name:
                 listbox1.insert(END, each)
 
     def refresh_selection(x):
-        selection=listbox1.curselection()
-        if selection!=():
-            self.to=listbox1.get(selection)
+        selection = listbox1.curselection()
+        if selection != ():
+            self.to = listbox1.get(selection)
             label1_string.set(self.to)
-
 
     # -----------------------------------------------end---------------------------------------------- #
 
     # --------------------------------------------UI_Setup-------------------------------------------- #
     chat_window = Tk()
     chat_window.iconbitmap('logo.ico')
-    chat_window.title('haeChat'+' ['+self.name+']')
+    chat_window.title('haeChat' + ' [' + self.name + ']')
 
     frame4 = Frame(chat_window)
     frame4.pack(fill=X, anchor=W)
@@ -123,10 +142,14 @@ def chat(self):
     entry1_string = StringVar()
     entry1 = Entry(frame4, textvariable=entry1_string)
     entry1_string.set('Type here to search...')
-    entry1.place(relwidth=1)
+    entry1.place(relwidth=1, y=5)
 
-    button1 = Button(frame4, width=10, text='Search')
-    button1.pack(side=RIGHT)
+    button1 = Button(frame4, width=10, height=1, text='Search')
+    button1.pack(side=RIGHT, fill=Y)
+
+    canvas1 = Canvas(chat_window, height=10)
+    canvas1.create_line(0, 10, 800, 10, width=2, fill='grey')
+    canvas1.pack(fill=X)
 
     pan1 = PanedWindow(chat_window, orient=HORIZONTAL)
     pan1.pack(anchor=W, fill=BOTH)
@@ -136,6 +159,10 @@ def chat(self):
 
     frame2 = Frame(pan1)
     pan1.add(frame2)
+
+    label2_string = StringVar()
+    label2 = Label(frame1, textvariable=label2_string, font=Font(font='Arial', size=12))
+    label2.pack(anchor=W, fill=Y)
 
     listbox1 = Listbox(frame1, height=20, width=30)
     listbox1.bind("<Button-1>", refresh_selection)
@@ -150,15 +177,21 @@ def chat(self):
     button3 = Button(frame3, width=10, text='Group', command=button3_click)
     button3.place(rely=0.5, relx=0.5, relwidth=0.5, anchor=W, relheight=1)
 
+    frame5 = Frame(frame2)
+    frame5.pack(fill=X)
+
     label1_string = StringVar()
-    label1_string.set('User')
-    label1 = Label(frame2, textvariable=label1_string)
-    label1.pack(anchor=W)
+    label1_string.set('')
+    label1 = Label(frame5, textvariable=label1_string, font=Font(font='Arial', size=12))
+    label1.pack(side=LEFT)
+
+    button5_string = StringVar()
+    button5 = Button(frame5, width=15, textvariable=button5_string)
 
     pan2 = PanedWindow(frame2, orient=VERTICAL)
     pan2.pack(fill=BOTH)
 
-    text1 = Text(height=20)
+    text1 = Text(height=21)
     pan2.add(text1)
 
     text2 = Text(height=5)

@@ -77,7 +77,6 @@ class Server:
                                 self.indices[name] = indexer.Index(name)
                         print(name + ' logged in')
                         # self.group.join(name, password)
-                        # todo: mark this user to be online
                         mysend(sock, json.dumps(
                             {"action": "login", "status": "ok"}))
                     else:  # the password is incorrect
@@ -156,8 +155,13 @@ class Server:
     def handle_msg(self, from_sock):
         # read msg code
         msg = myrecv(from_sock)
+        name = self.logged_sock2name[from_sock]
+        group_name_list = []
+        for each_number in self.group.members[name].groups:
+            group_name_list.append(self.group.chat_grps[each_number]['name'])
         mysend(from_sock, json.dumps(
-            {"action": "refresh_list", "users": list(self.group.members.keys()), 'groups': self.group.chat_grps}))
+            {"action": "refresh_list", "users": list(self.group.members.keys()),
+             'groups': group_name_list}))
         if len(msg) > 0:
             # ==============================================================================
             # handle connect request this is implemented for you
@@ -197,20 +201,29 @@ class Server:
                 self.indices[from_name].add_msg_and_index(msg_text)
                 # ---- end of your code --- #
                 if msg['type'] == 'group':
-                    the_guys = self.group.list_me(from_name)[1:]
+                    the_guys = self.group.chat_grps[self.group.name2group[msg['to']]]['members']
                     for g in the_guys:
-                        to_sock = self.logged_name2sock[g]
+                        if g == msg['from']:
+                            continue
+                        try:
+                            to_sock = self.logged_name2sock[g]
+                            mysend(to_sock, json.dumps(
+                                {"action": "exchange", "from": from_name, 'to': msg['to'], "message": msg_text,
+                                 'type': msg['type']}))
+                        except:
+                            print(g, 'is not online')
                 elif msg['type'] == 'user':
                     try:
                         to_sock = self.logged_name2sock[msg['to']]
+                        mysend(to_sock, json.dumps(
+                            {"action": "exchange", "from": from_name, "message": msg_text, 'type': msg['type']}))
                     except:
                         mysend(from_sock, json.dumps(
-                            {"action": "exchange", "from": msg['to'], "message": '(User is offline)\n\n'}))
-                        return
+                            {"action": "exchange", "from": msg['to'], "message": '(User is offline)\n\n',
+                             'type': msg['type']}))
                     # IMPLEMENTATION
                     # ---- start your code ---- #
                 # self.indices[g].add_msg_and_index(msg_text)
-                mysend(to_sock, json.dumps({"action": "exchange", "from": from_name, "message": msg_text}))
 
                 # ---- end of your code --- #
 
