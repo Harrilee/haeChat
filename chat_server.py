@@ -17,6 +17,9 @@ import chat_group as grp
 import send_code
 from random import randint
 
+import threading
+from blackjack import *
+
 
 class Server:
     def __init__(self):
@@ -35,6 +38,7 @@ class Server:
         # sonnet
         self.sonnet = indexer.PIndex("AllSonnets.txt")
         self.codes = {}
+        self.game_players = []
 
     def send_code(self, email):
         code = ''
@@ -180,6 +184,63 @@ class Server:
                     msg = json.dumps(
                         {"action": "connect", "status": "no-user"})
                 mysend(from_sock, msg)
+            #============================================
+            # gaming 
+            #======================================
+            '''
+            elif msg["action"] == "connect_g":
+                to_name = msg["target"]
+                from_name = self.logged_sock2name[from_sock]
+                if to_name == from_name:
+                    msg = json.dumps({"action": "connect_g", "status": "self"})
+                # connect to the peer
+                elif self.group.is_member(to_name):
+                    to_sock = self.logged_name2sock[to_name]
+                    self.group.connect(from_name, to_name)
+                    the_guys = self.group.list_me(from_name)
+                    msg = json.dumps(
+                        {"action": "connect_g", "status": "success"})
+                    for g in the_guys[1:]:
+                        to_sock = self.logged_name2sock[g]
+                        mysend(to_sock, json.dumps(
+                            {"action": "connect_g", "status": "request", "from": from_name}))
+
+
+                    player1 = Players(from_name)
+                    player2 = Players(to_name)
+                    self.game_players.append(player1)
+                    self.game_players.append(player2)
+
+
+                    print("players connected")
+                    
+                else:
+                    msg = json.dumps({"action": "connect_g", "status": "no-user"})
+                    
+                mysend(from_sock, msg)
+                game_th = threading.Thread(target=game_start, args=(game_player_1, game_player_2))
+                game_th.start()
+
+                print("starting game...")
+
+                msg = json.loads(msg)
+
+                time.sleep(CHAT_WAIT * 2)
+                
+                for other in self.game_players:
+
+                    while len(other.to_receive) > 0:
+                        msg['message'] = other.to_receive.pop(0)
+                        msg['from'] = '[server] '
+                        said2 = text_proc(msg["message"], from_name)
+
+                        for g in the_guys:
+                            if g == other.name:
+                                to_sock = self.logged_name2sock[g]
+                                self.indices[g].add_msg_and_index(said2)
+                                mysend(to_sock, json.dumps(
+                                    {"action": "exchange_g", "from": msg["from"], "message": msg["message"]}))
+                '''
             # ==============================================================================
             # handle messeage exchange: IMPLEMENT THIS
             # ==============================================================================
@@ -204,7 +265,46 @@ class Server:
                     mysend(to_sock, json.dumps({"action": "exchange", "from": from_name, "message": msg_text}))
 
                     # ---- end of your code --- #
+            '''
+            elif msg["action"] == "exchange_g":
+                from_name = self.logged_sock2name[from_sock]
+                """
+                Finding the list of people to send to and index message
+                """
+                # IMPLEMENTATION
+                # ---- start your code ---- #
+                the_guys = self.group.list_me(from_name)
 
+                # format the message: at what time, from whom, what is the message
+                said2 = text_proc(msg["message"], from_name)
+
+                #self.indices is a dictionary: name, message and index
+                #add index in your chat history
+                self.indices[from_name].add_msg_and_index(said2)
+
+                for people in self.game_players:
+                    if people.name != from_name:
+                        continue
+                    else:
+                        people.action = msg['message']
+                        time.sleep(CHAT_WAIT)
+                        for other in self.game_players:
+
+                            while len(other.to_recieve) > 0:
+                                msg['message'] = other.to_recieve.pop(0)
+                                msg['from'] = '[server] '
+
+
+                                for g in the_guys:
+                                    if g == other.name:
+                                        to_sock = self.logged_name2sock[g]
+                                        # IMPLEMENTATION
+                                        # ---- start your code ---- #
+                                        #add indices to people you send, so that what you send is also in their chat history
+                                        self.indices[g].add_msg_and_index(said2)
+                                        #send the message, turn the dictionary into a string
+                                        mysend(to_sock, json.dumps({"action": "exchange_g", "from": msg["from"], "message": msg["message"]}))
+                                        '''
             # ==============================================================================
             # the "from" guy has had enough (talking to "to")!
             # ==============================================================================
