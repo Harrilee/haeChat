@@ -6,27 +6,33 @@ import json
 from chat_utils import *
 import client_state_machine as csm
 
-
 import threading
 
 import window_login
+import window_chat
+
 
 class Client:
     def __init__(self, args):
-        self.peer = ''
+        self.name = ''
+        self.user = ['Alice', 'Bob']
+        self.group = ['Group 1', 'Group 2']
         self.console_input = []
         self.state = S_OFFLINE
         self.system_msg = ''
         self.local_msg = ''
         self.peer_msg = ''
         self.args = args
+        self.type = ''  # 'user' / 'group'
+        self.to = ''  # username or group name
+        self.chat_history = {}
+
+    def login(self):
+        return window_login.login(self)
 
     def quit(self):
         self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
-
-    def get_name(self):
-        return self.name
 
     def init_chat(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -37,8 +43,10 @@ class Client:
         reading_thread.daemon = True
         reading_thread.start()
 
-    def shutdown_chat(self):
-        return
+    def read_input(self):
+        while True:
+            text = sys.stdin.readline()[:-1]
+            self.console_input.append(text)  # no need for lock, append is thread safe
 
     def send(self, msg):
         mysend(self.socket, msg)
@@ -57,41 +65,21 @@ class Client:
             peer_msg = self.recv()
         return my_msg, peer_msg
 
+    def chat(self):
+        return window_chat.chat(self)
+
+    def run_chat(self):
+        self.init_chat()
+        self.login()
+        self.system_msg += 'Welcome, ' + self.name + '!'
+        self.output()
+        self.chat()
+
     def output(self):
         if len(self.system_msg) > 0:
             print(self.system_msg)
             self.system_msg = ''
 
-    def login(self):
-        return window_login.login(self)
-
-    def read_input(self):
-        while True:
-            text = sys.stdin.readline()[:-1]
-            self.console_input.append(text)  # no need for lock, append is thread safe
-
-    def print_instructions(self):
-        self.system_msg += menu
-
-    def run_chat(self):
-        self.init_chat()
-        # self.system_msg += 'Welcome to ICS chat\n'
-        # self.system_msg += 'Please enter your name: '
-        # self.output()
-        #while self.login() != True:
-        #    self.output()
-        self.login()
-        self.system_msg += 'Welcome, ' + self.get_name() + '!'
-        self.output()
-        while self.sm.get_state() != S_OFFLINE:
-            self.proc()
-            self.output()
-            time.sleep(CHAT_WAIT)
-        self.quit()
-
-    # ==============================================================================
-    # main processing loop
-    # ==============================================================================
     def proc(self):
         my_msg, peer_msg = self.get_msgs()
         self.system_msg += self.sm.proc(my_msg, peer_msg)

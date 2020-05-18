@@ -1,7 +1,7 @@
 from tkinter import *
 import window_register
 import window_reset
-from chat_client_class import *
+from chat_utils import *
 import json
 
 

@@ -100,7 +100,8 @@ class Server:
                     try:
                         email = self.group.members[msg['name']].email
                         self.send_code(email)
-                        mysend(sock, json.dumps({"action": "send_code_request_given_name", "status": "ok", 'email':email}))
+                        mysend(sock,
+                               json.dumps({"action": "send_code_request_given_name", "status": "ok", 'email': email}))
                         print('message sent')
                     except:
                         mysend(sock, json.dumps({"action": "send_code_request_given_name", "status": "wrong"}))
@@ -155,6 +156,8 @@ class Server:
     def handle_msg(self, from_sock):
         # read msg code
         msg = myrecv(from_sock)
+        mysend(from_sock, json.dumps(
+            {"action": "refresh_list", "users": list(self.group.members.keys()), 'groups': self.group.chat_grps}))
         if len(msg) > 0:
             # ==============================================================================
             # handle connect request this is implemented for you
@@ -193,17 +196,23 @@ class Server:
                 msg_text = text_proc(msg['message'], from_name)
                 self.indices[from_name].add_msg_and_index(msg_text)
                 # ---- end of your code --- #
-
-                the_guys = self.group.list_me(from_name)[1:]
-                for g in the_guys:
-                    to_sock = self.logged_name2sock[g]
-
+                if msg['type'] == 'group':
+                    the_guys = self.group.list_me(from_name)[1:]
+                    for g in the_guys:
+                        to_sock = self.logged_name2sock[g]
+                elif msg['type'] == 'user':
+                    try:
+                        to_sock = self.logged_name2sock[msg['to']]
+                    except:
+                        mysend(from_sock, json.dumps(
+                            {"action": "exchange", "from": msg['to'], "message": '(User is offline)\n\n'}))
+                        return
                     # IMPLEMENTATION
                     # ---- start your code ---- #
-                    self.indices[g].add_msg_and_index(msg_text)
-                    mysend(to_sock, json.dumps({"action": "exchange", "from": from_name, "message": msg_text}))
+                # self.indices[g].add_msg_and_index(msg_text)
+                mysend(to_sock, json.dumps({"action": "exchange", "from": from_name, "message": msg_text}))
 
-                    # ---- end of your code --- #
+                # ---- end of your code --- #
 
             # ==============================================================================
             # the "from" guy has had enough (talking to "to")!
@@ -267,7 +276,6 @@ class Server:
                 # ---- end of your code --- #
                 mysend(from_sock, json.dumps(
                     {"action": "search", "results": search_rslt}))
-
         # ==============================================================================
         #                 the "from" guy really, really has had enough
         # ==============================================================================
