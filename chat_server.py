@@ -16,6 +16,7 @@ from chat_utils import *
 import chat_group as grp
 import send_code
 from random import randint
+from blackjack import *
 
 
 class Server:
@@ -36,6 +37,11 @@ class Server:
         self.sonnet = indexer.PIndex("AllSonnets.txt")
         self.codes = {}
 
+    def start_black(self):
+        print('starting game')
+        game(self.a, self.b)
+        print('start game')
+
     def send_code(self, email):
         code = ''
         for i in range(6):
@@ -47,7 +53,7 @@ class Server:
 
     def new_client(self, sock):
         # add to all sockets and to new clients
-        print('new client...')
+        # print('new client...')
         sock.setblocking(0)
         self.new_clients.append(sock)
         self.all_sockets.append(sock)
@@ -155,6 +161,7 @@ class Server:
     def handle_msg(self, from_sock):
         # read msg code
         msg = myrecv(from_sock)
+        #print(msg)
         name = self.logged_sock2name[from_sock]
         group_name_list = []
         for each_number in self.group.members[name].groups:
@@ -304,9 +311,27 @@ class Server:
             elif msg['action'] == 'leave_group':
                 self.group.delete_people(msg['from'], msg['to'])
             elif msg['action'] == 'delete_group':
-                self.group.delete_group_name( msg['to'])
+                self.group.delete_group_name(msg['to'])
             elif msg['action'] == 'refresh_list':
                 pass
+            elif msg['action'] == 'game':
+                try:
+                    self.group.members[msg['from']].game_status = 'prepared'
+                    if self.group.members[msg['to']].game_status == 'prepared':
+                        self.a = Players(msg['to'], self.logged_name2sock[msg['to']])
+                        self.b = Players(msg['from'], self.logged_name2sock[msg['from']])
+                        a_thread = threading.Thread(target=self.start_black)
+                        a_thread.daemon = True
+                        a_thread.start()
+                        self.group.members[msg['from']].game_status = 'not prepared'
+                        self.group.members[msg['to']].game_status = 'not prepared'
+                except:
+                    pass
+            elif msg['action'] == 'exchange_g':
+                if self.a.name == msg['from']:
+                    self.a.action = msg['choice']
+                if self.b.name == msg['from']:
+                    self.b.action = msg['choice']
             else:
                 print(msg)
                 # client died unexpectedly
@@ -320,15 +345,15 @@ class Server:
         print('starting server...')
         while (1):
             read, write, error = select.select(self.all_sockets, [], [])
-            print('checking logged clients..')
+            # print('checking logged clients..')
             for logc in list(self.logged_name2sock.values()):
                 if logc in read:
                     self.handle_msg(logc)
-            print('checking new clients..')
+            # print('checking new clients..')
             for newc in self.new_clients[:]:
                 if newc in read:
                     self.login(newc)
-            print('checking for new connections..')
+            # print('checking for new connections..')
             if self.server in read:
                 # new client request
                 sock, address = self.server.accept()

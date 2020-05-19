@@ -11,6 +11,7 @@ import json
 import window_add_group
 import window_modify_group
 import window_game_menu
+import indexer
 
 
 def chat(self):

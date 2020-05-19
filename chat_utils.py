@@ -70,7 +70,11 @@ def myrecv(s):
             print('disconnected')
             return('')
         size += text
-    size = int(size)
+    try:
+        size = int(size)
+    except:
+        size=100
+        print('size max')
     #now receive message
     msg = ''
     while len(msg) < size:

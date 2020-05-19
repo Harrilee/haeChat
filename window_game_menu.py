@@ -15,7 +15,9 @@ def main(self):
         shooter.main()
 
     def blackjack():
-        pass
+        import window_blackjack
+        window_blackjack.main(self)
+
 
     def play():
         if choice_val.get() == 0:
