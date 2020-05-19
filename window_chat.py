@@ -10,6 +10,7 @@ import select
 import json
 import window_add_group
 import window_modify_group
+import window_game_menu
 
 
 def chat(self):
@@ -137,21 +138,23 @@ def chat(self):
                 listbox1.insert(END, each)
 
     def button5_click():
-        msg = json.dumps({"action": "member_list", "from": self.name, 'to': self.to})
-        mysend(self.socket, msg)
+        if button5_string.get()=='Group Settings':
+            msg = json.dumps({"action": "member_list", "from": self.name, 'to': self.to})
+            mysend(self.socket, msg)
+            while True:
+                my_msg, peer_msg = self.get_msgs()
+                if len(peer_msg)==0:
+                    continue
+                peer_msg = json.loads(peer_msg)
+                if peer_msg['action'] == 'member_list':
+                    self.member_list = peer_msg['member_list']
+                    print('member_list:', peer_msg)
+                    break
+            window_modify_group.main(self, self.to, self.member_list)
+            self.to = ''
+        elif button5_string.get()=='Play Game':
+            window_game_menu.main(self)
 
-        while True:
-            my_msg, peer_msg = self.get_msgs()
-            if len(peer_msg)==0:
-                continue
-            peer_msg = json.loads(peer_msg)
-            if peer_msg['action'] == 'member_list':
-                self.member_list = peer_msg['member_list']
-                print('member_list:', peer_msg)
-                break
-
-        window_modify_group.main(self, self.to, self.member_list)
-        self.to = ''
 
 
     def refresh_selection(x):

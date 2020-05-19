@@ -301,6 +301,10 @@ class Server:
                     {"action": "member_list",
                      "member_list": self.group.chat_grps[self.group.name2group[msg['to']]]['members']}))
                 print(self.group.chat_grps[self.group.name2group[msg['to']]]['members'])
+            elif msg['action'] == 'leave_group':
+                self.group.delete_people(msg['from'], msg['to'])
+            elif msg['action'] == 'delete_group':
+                self.group.delete_group_name( msg['to'])
             elif msg['action'] == 'refresh_list':
                 pass
             else:

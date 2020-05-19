@@ -61,8 +61,27 @@ def main(self, grp_name, member_list):
         chat_utils.mysend(self.socket, msg)
         window.destroy()
 
-    button1 = Button(window, text='Create_group', width=10, command=button1_click)
+    def button2_click():
+        msg = json.dumps({"action": "leave_group", "from": self.name, 'to':self.to})
+        chat_utils.mysend(self.socket, msg)
+        window.destroy()
+
+    def button3_click():
+        msg = json.dumps({"action": "delete_group", "from": self.name, 'to':self.to})
+        chat_utils.mysend(self.socket, msg)
+        window.destroy()
+
+    frame2=Frame(window)
+    frame2.pack()
+
+    button1 = Button(frame2, text='Modify', width=10, command=button1_click)
     button1.pack(pady=10)
+
+    button2 = Button(frame2, text='Leave', width=10, command=button2_click)
+    button2.pack(pady=10)
+
+    button3 = Button(frame2, text='Delete', width=10, command=button3_click)
+    button3.pack(pady=10)
 
     label3_string = StringVar()
     label3 = Label(window, textvariable=label3_string)

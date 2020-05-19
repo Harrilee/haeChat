@@ -101,7 +101,8 @@ class Group:
         self.save_grps()
         return
 
-    def delete_people(self, people, group_number):
+    def delete_people(self, people, group_name):
+        group_number = self.name2group[group_name]
         try:
             self.chat_grps[group_number]['members'].remove(people)
         except:
@@ -114,6 +115,17 @@ class Group:
         return
 
     def delete_group(self, group_number):
+        self.name2group.pop(self.chat_grps[group_number]['name'])
+        for each_member in self.chat_grps[group_number]['members']:
+            self.members[each_member].groups.remove(group_number)
+        self.chat_grps.pop(group_number)
+        print(self.chat_grps)
+
+        self.save_grps()
+        return
+
+    def delete_group_name(self, group_name):
+        group_number = self.name2group[group_name]
         self.name2group.pop(self.chat_grps[group_number]['name'])
         for each_member in self.chat_grps[group_number]['members']:
             self.members[each_member].groups.remove(group_number)
